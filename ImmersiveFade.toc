@@ -1,0 +1,8 @@
+## Interface: 80000
+## Title: |cffb538e2Immersive|r|cffd6b5e2Fade|r
+## Notes: Automatically fades out the interface after a period of no interaction
+## Author: kewhkies
+## Version: 0.1.0
+
+Config.lua
+ImmersiveFade.lua
