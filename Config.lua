@@ -39,3 +39,11 @@ options.DEBUG = false;
 -- Add names of custom frames here (from addons, etc.) to check IsVisible
 --------------------------------------------------------------------------------
 -- options.CUSTOM_FRAMES = {};
+
+--------------------------------------------------------------------------------
+-- Add names of frames to exclude here (minimap, frames from addons, etc.)
+-- Excluded frames are reparented
+--------------------------------------------------------------------------------
+options.EXCLUDE_FRAMES = {
+    MinimapCluster
+};
