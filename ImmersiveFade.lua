@@ -35,12 +35,6 @@ local DEFAULT_FRAMES = {
 	GossipFrame,
 	WorldMapFrame,
 	MailFrame,
-	ChatFrame1EditBox,
-	ChatFrame2EditBox,
-	ChatFrame3EditBox,
-	ChatFrame4EditBox,
-	ChatFrame5EditBox,
-	ChatFrame6EditBox,
 	PVEFrame,
 	LFGDungeonReadyDialog,
 	LFGDungeonReadyStatus,
@@ -73,6 +67,7 @@ local FADE_OUT_DELAY = 30.0;
 local FADE_OUT_TIME = 2.0;
 local FADE_OUT_VALUE = 0.0;
 local CUSTOM_FRAMES = {};
+local EXCLUDE_FRAMES = {};
 
 if type(options.DEBUG) == "boolean" then
 	DEBUG = options.DEBUG;
@@ -97,6 +92,9 @@ if type(options.FADE_OUT_TIME) == "number" then
 end
 if type(options.CUSTOM_FRAMES) == "table" then
 	CUSTOM_FRAMES = options.CUSTOM_FRAMES;
+end
+if type(options.EXCLUDE_FRAMES) == "table" then
+	EXCLUDE_FRAMES = options.EXCLUDE_FRAMES;
 end
 
 -- Main addon frame
@@ -297,6 +295,14 @@ addonFrame:HookScript("OnUpdate", function()
 		return;
 	end;
 
+	-- Set parent for excluded frames
+	for i = 1, #EXCLUDE_FRAMES do
+		ExcludeFrame = EXCLUDE_FRAMES[i]
+		if (ExcludeFrame ~= nil and ExcludeFrame:GetParent() ~= nil) then
+			ExcludeFrame:SetParent(nil);
+		end
+	end
+
 	-- In group or raid
 	if IsInGroup()
 	or IsInRaid() then
@@ -346,6 +352,17 @@ addonFrame:HookScript("OnUpdate", function()
 		return;
 	end
 
+	-- Chat frame edit box has text
+	if (ChatFrame1EditBox:GetText() ~= nil and ChatFrame1EditBox:GetText() ~= "")
+	or (ChatFrame2EditBox:GetText() ~= nil and ChatFrame2EditBox:GetText() ~= "")
+	or (ChatFrame3EditBox:GetText() ~= nil and ChatFrame3EditBox:GetText() ~= "")
+	or (ChatFrame4EditBox:GetText() ~= nil and ChatFrame4EditBox:GetText() ~= "")
+	or (ChatFrame5EditBox:GetText() ~= nil and ChatFrame5EditBox:GetText() ~= "")
+	or (ChatFrame6EditBox:GetText() ~= nil and ChatFrame6EditBox:GetText() ~= "") then
+		ImmersiveFade_FadeIn();
+		return;
+	end
+
 	-- Mouse over chat
 	if MouseIsOver(ChatFrame1)
 	or MouseIsOver(ChatFrame2)
@@ -369,7 +386,7 @@ addonFrame:HookScript("OnUpdate", function()
 	-- Frame visibility control, default frames
 	for i = 1, #DEFAULT_FRAMES do
 		DefaultFrame = DEFAULT_FRAMES[i]
-		if (DefaultFrame ~= nil and DefaultFrame:IsVisible()) then
+		if DefaultFrame ~= nil and DefaultFrame:IsVisible() then
 			ImmersiveFade_FadeIn();
 			return;
 		end
@@ -378,7 +395,7 @@ addonFrame:HookScript("OnUpdate", function()
 	-- Frame visibility control, custom frames
 	for i = 1, #CUSTOM_FRAMES do
 		CustomFrame = CUSTOM_FRAMES[i]
-		if (CustomFrame ~= nil and CustomFrame:IsVisible()) then
+		if CustomFrame ~= nil and CustomFrame:IsVisible() then
 			ImmersiveFade_FadeIn();
 			return;
 		end
