@@ -51,7 +51,7 @@ local DEFAULT_FRAMES =
 		StaticPopup1,
 		MirrorTimer1,
 		InterfaceOptionsFrame,
-		VideoOptionsFrame,
+		VideoOptionsFrame
 	}
 
 -- Variables
@@ -81,7 +81,7 @@ local defaults = {
 		},
 		frames = {
 			include = "",
-			exclude = "MinimapCluster\nBNToastFrame"
+			exclude = "MinimapCluster\nBNToastFrame\nPVPFramePopup\nLFGDungeonReadyPopups"
 		}
 	}
 }
@@ -210,7 +210,7 @@ local options = {
 			args = {
 				include = {
 					name = "Frame whitelist",
-					desc = "If these frames are visible (one per line), the UI will not fade out",
+					desc = "If these frames are visible (separated with commas or whitespace), the UI will not fade out",
 					type = "input",
 					multiline = true,
 					get = function()
@@ -222,7 +222,7 @@ local options = {
 				},
 				exclude = {
 					name = "Frame blacklist",
-					desc = "Add names of frames to re-parent to prevent fading out (one per line)",
+					desc = "Add names of frames (separated with commas or whitespace) to re-parent to prevent fading out",
 					type = "input",
 					multiline = true,
 					get = function()
@@ -238,16 +238,28 @@ local options = {
 }
 
 -- Helper functions
-function ImmersiveFade:SplitStr(inputstr, sep)
-	if sep == nil then
-		sep = "%s"
-	end
+function ImmersiveFade:SplitStr(str, ...)
 	local t = {}
 	local i = 1
-	for str in string.gmatch(inputstr, "([^" .. sep .. "]+)") do
-		t[i] = str
-		i = i + 1
+
+	if arg == nil or arg[n] == 0 then
+		for str in string.gmatch(str, "([^%s]+)") do
+			t[i] = str
+			i = i + 1
+		end
+	else
+		for _, sep in ipairs(arg) do
+			if sep == nil or sep == "" then
+				sep = "%s"
+			end
+
+			for str in string.gmatch(str, "([^" .. sep .. "]+)") do
+				t[i] = str
+				i = i + 1
+			end
+		end
 	end
+
 	return t
 end
 
@@ -434,10 +446,11 @@ function ImmersiveFade:OnEnable()
 			if UnitAffectingCombat("Player") or InCombatLockdown() then return end
 
 			-- Set parent for excluded frames
-			local excludeFrames = self:SplitStr(db.profile.frames.exclude, "\n")
+			local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
 			for i = 1, #excludeFrames do
-				local ExcludeFrame = _G[excludeFrames[i]]
+				local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
 				if ExcludeFrame ~= nil and ExcludeFrame:GetParent() ~= nil then
+					self:PrintDebug("Exclude %s from fading (SetParent)", ExcludeFrame:GetName())
 					ExcludeFrame:SetParent(nil)
 				end
 			end
@@ -498,7 +511,7 @@ function ImmersiveFade:OnEnable()
 
 			-- Chat frame edit box has text
 			for i = 1, #CHAT_FRAME_EDIT_BOXES do
-				EditBox = CHAT_FRAME_EDIT_BOXES[i]
+				local EditBox = CHAT_FRAME_EDIT_BOXES[i]
 				if EditBox:GetText() ~= nil and EditBox:GetText() ~= "" then
 					self:FadeIn()
 					return
@@ -507,7 +520,7 @@ function ImmersiveFade:OnEnable()
 
 			-- Mouse over chat
 			for i = 1, #CHAT_FRAMES do
-				ChatFrame = CHAT_FRAMES[i]
+				local ChatFrame = CHAT_FRAMES[i]
 				if MouseIsOver(ChatFrame) then
 					self:FadeIn()
 					return
@@ -533,9 +546,9 @@ function ImmersiveFade:OnEnable()
 			end
 
 			-- Frame visibility control, include frames
-			local includeFrames = self:SplitStr(db.profile.frames.include, "\n")
+			local includeFrames = self:SplitStr(db.profile.frames.include, "%s", ",")
 			for i = 1, #includeFrames do
-				IncludeFrame = includeFrames[i]
+				local IncludeFrame = _G[includeFrames[i]:gsub("%s+", "")]
 				if IncludeFrame ~= nil and IncludeFrame:IsVisible() then
 					self:FadeIn()
 					return
