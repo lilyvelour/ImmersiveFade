@@ -53,7 +53,11 @@ local DEFAULT_FRAMES =
 		StaticPopup1,
 		MirrorTimer1,
 		InterfaceOptionsFrame,
-		VideoOptionsFrame
+		VideoOptionsFrame,
+		LFGDungeonReadyStatus,
+		LFGDungeonReadyDialog,
+		PVPRoleCheckPopup,
+		PVPReadyDialog
 	}
 
 -- Variables
@@ -83,7 +87,7 @@ local defaults = {
 		},
 		frames = {
 			include = "",
-			exclude = "MinimapCluster\nBNToastFrame\nPVPFramePopup\nLFGDungeonReadyPopup"
+			exclude = "MinimapCluster\nBNToastFrame"
 		}
 	}
 }
