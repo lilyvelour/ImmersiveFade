@@ -436,7 +436,7 @@ function ImmersiveFade:OnEnable()
 			-- Set parent for excluded frames
 			local excludeFrames = self:SplitStr(db.profile.frames.exclude, "\n")
 			for i = 1, #excludeFrames do
-				ExcludeFrame = _G[i]
+				local ExcludeFrame = _G[excludeFrames[i]]
 				if ExcludeFrame ~= nil and ExcludeFrame:GetParent() ~= nil then
 					ExcludeFrame:SetParent(nil)
 				end
