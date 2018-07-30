@@ -1,6 +1,8 @@
 -- Create addon
 ImmersiveFade = LibStub("AceAddon-3.0"):NewAddon("ImmersiveFade", "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0")
-local hookFrame = CreateFrame("Frame")
+ImmersiveFadeExcludeParent = CreateFrame("Frame", "ImmersiveFadeExcludeParent")
+
+local HookFrame = CreateFrame("Frame")
 
 -- Constants
 local ALPHA_EPSILON = 0.025
@@ -416,7 +418,7 @@ function ImmersiveFade:OnEnable()
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", self.CHAT_MSG_WHISPER)
 
 	self:HookScript(
-		hookFrame,
+		HookFrame,
 		"OnUpdate",
 		function(_, dt)
 			-- Don't run if disabled
@@ -449,10 +451,21 @@ function ImmersiveFade:OnEnable()
 			local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
 			for i = 1, #excludeFrames do
 				local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
-				if ExcludeFrame ~= nil and ExcludeFrame:GetParent() ~= nil then
+				if ExcludeFrame ~= nil and ExcludeFrame:GetParent() ~= ImmersiveFadeExcludeParent then
 					self:PrintDebug("Exclude %s from fading (SetParent)", ExcludeFrame:GetName())
-					ExcludeFrame:SetParent(nil)
+					ExcludeFrame:SetParent(ImmersiveFadeExcludeParent)
 				end
+			end
+
+			-- Set exclude parent properties
+			-- TODO: This doesn't need to happen every frame
+			ImmersiveFadeExcludeParent:SetFrameStrata(UIParent:GetFrameStrata())
+			ImmersiveFadeExcludeParent:SetWidth(UIParent:GetWidth())
+			ImmersiveFadeExcludeParent:SetHeight(UIParent:GetHeight())
+			ImmersiveFadeExcludeParent:SetPoint("CENTER",0,0)
+			ImmersiveFadeExcludeParent:SetScale(UIParent:GetScale())
+			if ImmersiveFadeExcludeParent:IsShown() ~= true then
+				ImmersiveFadeExcludeParent:Show()
 			end
 
 			-- In group or raid
@@ -568,6 +581,15 @@ function ImmersiveFade:OnDisable()
 	ChatFrame_RemoveMessageEventFilter("CHAT_MSG_WHISPER", self.CHAT_MSG_WHISPER)
 
 	self:UnhookAll()
+
+	local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
+	for i = 1, #excludeFrames do
+		local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
+		if ExcludeFrame ~= nil and ExcludeFrame:GetParent() == ExcludeParentFrame then
+			self:PrintDebug("Resetting %s parent", ExcludeFrame:GetName())
+			ExcludeFrame:SetParent(UIParent)
+		end
+	end
 
 	if #fadeInTracker > 0 then
 		tremove(fadeInTracker, 1)
