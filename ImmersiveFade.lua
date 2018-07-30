@@ -81,7 +81,7 @@ local defaults = {
 		},
 		frames = {
 			include = "",
-			exclude = "MinimapCluster\nBNToastFrame\nPVPFramePopup\nLFGDungeonReadyPopups"
+			exclude = "MinimapCluster\nBNToastFrame\nPVPFramePopup\nLFGDungeonReadyPopup"
 		}
 	}
 }
