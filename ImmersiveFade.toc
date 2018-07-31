@@ -2,7 +2,7 @@
 ## Title: Immersive|cffd6b5e2Fade|r
 ## Notes: Automatically fades out the interface after a period of no interaction
 ## Author: kewhkies
-## Version: 0.2.5
+## Version: 1.0.0
 ## SavedVariables: ImmersiveFade
 
 embeds.xml

@@ -1,3 +1,5 @@
+-- TODO: Use AceTimer for fade timers
+
 -- Create addon
 ImmersiveFade = LibStub("AceAddon-3.0"):NewAddon("ImmersiveFade", "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0")
 ImmersiveFadeExcludeParent = CreateFrame("Frame", "ImmersiveFadeExcludeParent")
@@ -227,7 +229,7 @@ local options = {
 					end
 				},
 				exclude = {
-					name = "Frame blacklist",
+					name = "Frame blacklist |cffff0000(experimental)|r",
 					desc = "Add names of frames (separated with commas or whitespace) to re-parent to prevent fading out",
 					type = "input",
 					multiline = true,
@@ -466,7 +468,7 @@ function ImmersiveFade:OnEnable()
 			ImmersiveFadeExcludeParent:SetFrameStrata(UIParent:GetFrameStrata())
 			ImmersiveFadeExcludeParent:SetWidth(UIParent:GetWidth())
 			ImmersiveFadeExcludeParent:SetHeight(UIParent:GetHeight())
-			ImmersiveFadeExcludeParent:SetPoint("CENTER",0,0)
+			ImmersiveFadeExcludeParent:SetPoint("CENTER", 0, 0)
 			ImmersiveFadeExcludeParent:SetScale(UIParent:GetScale())
 			if ImmersiveFadeExcludeParent:IsShown() ~= true then
 				ImmersiveFadeExcludeParent:Show()
