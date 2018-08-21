@@ -324,7 +324,7 @@ function ImmersiveFade:SetParentOfExcluded(action)
 			if (action == "FadeIn" and ExcludeFrame:GetParent() == ImmersiveFadeExcludeParent) then
 				ExcludeFrame:SetParent(UIParent)
 				self:PrintDebug("Payback %s to UIParent", ExcludeFrame:GetName())
-			elseif (action == "FadeOut" and ExcludeFrame:GetParent() == UIParent) then
+			elseif (action == "FadeOut" and ExcludeFrame:GetParent() ~= ImmersiveFadeExcludeParent) then
 				ExcludeFrame:SetParent(ImmersiveFadeExcludeParent)
 				self:PrintDebug("Exclude %s from Fading", ExcludeFrame:GetName())
 			end
