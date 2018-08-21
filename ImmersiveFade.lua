@@ -315,6 +315,23 @@ function ImmersiveFade:SetAlpha(alpha)
 	UIParent:SetAlpha(alpha)
 end
 
+-- switch excluded frames' parent when every fading in/out
+function ImmersiveFade:SetParentOfExcluded(action)
+	local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
+	for i = 1, #excludeFrames do
+		local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
+		if ExcludeFrame ~= nil then
+			if (action == "FadeIn" and ExcludeFrame:GetParent() == ImmersiveFadeExcludeParent) then
+				ExcludeFrame:SetParent(UIParent)
+				self:PrintDebug("Payback %s to UIParent", ExcludeFrame:GetName())
+			elseif (action == "FadeOut" and ExcludeFrame:GetParent() ~= ImmersiveFadeExcludeParent) then
+				ExcludeFrame:SetParent(ImmersiveFadeExcludeParent)
+				self:PrintDebug("Exclude %s from Fading", ExcludeFrame:GetName())
+			end
+		end
+	end
+end
+
 function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, fadeFunc)
 	-- Don't run in combat
 	if UnitAffectingCombat("Player") or InCombatLockdown() then
@@ -339,6 +356,7 @@ function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, 
 					fadeDuration,
 					fadeAlpha
 				)
+				self:SetParentOfExcluded(id)
 				fadeFunc(UIParent, fadeDuration, startAlpha, fadeAlpha)
 				UIParent.fadeInfo.finishedFunc = function()
 					self:PrintDebug("%s finished", id)
@@ -373,6 +391,7 @@ function ImmersiveFade:FadeIn()
 			tinsert(fadeInTracker, db.profile.fadeIn.delay)
 		else
 			self:PrintDebug("FadeIn no delay")
+			self:SetParentOfExcluded("FadeIn")
 			fadeProgress.FadeIn = true
 			UIFrameFadeIn(UIParent, db.profile.fadeIn.duration, startAlpha, db.profile.fadeIn.alpha)
 			UIParent.fadeInfo.finishedFunc = function()
@@ -400,6 +419,7 @@ function ImmersiveFade:FadeOut()
 			tinsert(fadeOutTracker, db.profile.fadeOut.delay)
 		else
 			self:PrintDebug("FadeOut no delay")
+			self:SetParentOfExcluded("FadeOut")
 			fadeProgress.FadeOut = true
 			UIFrameFadeIn(UIParent, db.profile.fadeOut.duration, startAlpha, db.profile.fadeOut.alpha)
 			UIParent.fadeInfo.finishedFunc = function()
@@ -417,9 +437,9 @@ function ImmersiveFade:OnInitialize()
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("ImmersiveFade", options, { "ifade", "immersivefade" })
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions("ImmersiveFade", "Immersive|cffd6b5e2Fade|r")
 end
+
 function ImmersiveFade:OnEnable()
 	self:PrintDebug("Registering events and hooks")
-
 	self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", self.CHAT_MSG_WHISPER)
 
@@ -452,16 +472,6 @@ function ImmersiveFade:OnEnable()
 			)
 			-- Don't continue if in combat
 			if UnitAffectingCombat("Player") or InCombatLockdown() then return end
-
-			-- Set parent for excluded frames
-			local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
-			for i = 1, #excludeFrames do
-				local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
-				if ExcludeFrame ~= nil and ExcludeFrame:GetParent() ~= ImmersiveFadeExcludeParent then
-					self:PrintDebug("Exclude %s from fading (SetParent)", ExcludeFrame:GetName())
-					ExcludeFrame:SetParent(ImmersiveFadeExcludeParent)
-				end
-			end
 
 			-- Set exclude parent properties
 			-- TODO: This doesn't need to happen every frame
@@ -580,6 +590,7 @@ function ImmersiveFade:OnEnable()
 		true
 	)
 end
+
 function ImmersiveFade:OnDisable()
 	self:PrintDebug("Removing events and hooks")
 
@@ -587,15 +598,6 @@ function ImmersiveFade:OnDisable()
 	ChatFrame_RemoveMessageEventFilter("CHAT_MSG_WHISPER", self.CHAT_MSG_WHISPER)
 
 	self:UnhookAll()
-
-	local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
-	for i = 1, #excludeFrames do
-		local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
-		if ExcludeFrame ~= nil and ExcludeFrame:GetParent() == ExcludeParentFrame then
-			self:PrintDebug("Resetting %s parent", ExcludeFrame:GetName())
-			ExcludeFrame:SetParent(UIParent)
-		end
-	end
 
 	if #fadeInTracker > 0 then
 		tremove(fadeInTracker, 1)
