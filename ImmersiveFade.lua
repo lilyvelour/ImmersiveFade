@@ -77,6 +77,10 @@ local defaults = {
 	profile = {
 		enabled = true,
 		debug = false,
+		disable = {
+			party = false,
+			raid = true
+		},
 		fadeIn = {
 			delay = 0.0,
 			duration = 0.1,
@@ -208,6 +212,35 @@ local options = {
 					end,
 					set = function(info, val)
 						db.profile.fadeOut.alpha = val
+					end
+				}
+			}
+		},
+		disable = {
+			type = "group",
+			name = "Disable",
+			desc = "Do not fade out when...",
+			args = {
+				party = {
+					name = "In party",
+					desc = "Disable fade while in a party",
+					type = "toggle",
+					get = function()
+						return db.profile.disable.party
+					end,
+					set = function(info, val)
+						db.profile.disable.party = val
+					end
+				},
+				raid = {
+					name = "In raid",
+					desc = "Disable fade while in a raid",
+					type = "toggle",
+					get = function()
+						return db.profile.disable.raid
+					end,
+					set = function(info, val)
+						db.profile.disable.raid = val
 					end
 				}
 			}
@@ -484,8 +517,14 @@ function ImmersiveFade:OnEnable()
 				ImmersiveFadeExcludeParent:Show()
 			end
 
-			-- In group or raid
-			if IsInGroup() or IsInRaid() then
+			-- In group
+			if db.profile.disable.party and IsInGroup() then
+				self:FadeIn()
+				return
+			end
+
+			-- In raid
+			if db.profile.disable.raid and IsInRaid() then
 				self:FadeIn()
 				return
 			end
