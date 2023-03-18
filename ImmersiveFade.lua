@@ -2,7 +2,7 @@
 
 -- Create addon
 ImmersiveFade = LibStub("AceAddon-3.0"):NewAddon("ImmersiveFade", "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0")
-ImmersiveFadeExcludeParent = CreateFrame("Frame", "ImmersiveFadeExcludeParent")
+ImmersiveFadePermaVizRootFrame = CreateFrame("Frame", "ImmersiveFadePermaVizRootFrame")
 
 local HookFrame = CreateFrame("Frame")
 
@@ -12,7 +12,7 @@ local TIME_EPSILON = 0.01677777
 local CHAT_FRAMES = { ChatFrame1, ChatFrame2, ChatFrame3, ChatFrame4, ChatFrame5, ChatFrame6 }
 local CHAT_FRAME_EDIT_BOXES =
 	{ ChatFrame1EditBox, ChatFrame2EditBox, ChatFrame3EditBox, ChatFrame4EditBox, ChatFrame5EditBox, ChatFrame6EditBox }
-local DEFAULT_FRAMES =
+local FRAMES_THAT_WILL_FORCE_FADE_IN =
 	{
 		AchivementFrame,
 		AchivementAlertFrame1,
@@ -361,23 +361,23 @@ function ImmersiveFade:SetAlpha(alpha)
 end
 
 -- switch excluded frames' parent when every fading in/out
-function ImmersiveFade:SetParentOfExcluded(action)
-	local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
-	for i = 1, #excludeFrames do
-		local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
-		if ExcludeFrame ~= nil then
-			if (action == "FadeIn" and ExcludeFrame:GetParent() == ImmersiveFadeExcludeParent) then
-				ExcludeFrame:SetParent(UIParent)
-				self:PrintDebug("Payback %s to UIParent", ExcludeFrame:GetName())
-			elseif (action == "FadeOut" and ExcludeFrame:GetParent() ~= ImmersiveFadeExcludeParent) then
-				ExcludeFrame:SetParent(ImmersiveFadeExcludeParent)
-				self:PrintDebug("Exclude %s from Fading", ExcludeFrame:GetName())
+function ImmersiveFade:moveAlwaysVisibleFrameToPermaVizParent(action)
+	local alwaysVisibleFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
+	for i = 1, #alwaysVisibleFrames do
+		local keepMeVisable = _G[alwaysVisibleFrames[i]:gsub("%s+", "")]
+		if keepMeVisable ~= nil then
+			if (action == "FadeIn" and keepMeVisable:GetParent() == ImmersiveFadePermaVizRootFrame) then
+				keepMeVisable:SetParent(UIParent)
+				self:PrintDebug("Payback %s to UIParent", keepMeVisable:GetName())
+			elseif (action == "FadeOut" and keepMeVisable:GetParent() ~= ImmersiveFadePermaVizRootFrame) then
+				keepMeVisable:SetParent(ImmersiveFadePermaVizRootFrame)
+				self:PrintDebug("Exclude %s from Fading", keepMeVisable:GetName())
 			end
 		end
 	end
 end
 
-function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, fadeFunc)
+function ImmersiveFade:UpdateFade(elapsedTime, id, fadeTracker, immediateFadeWhenFlying, fadeDuration, fadeAlpha, fadeFunc)
 	-- Don't run in combat
 	if UnitAffectingCombat("Player") or InCombatLockdown() then
 		tremove(fadeTracker, 1)
@@ -389,8 +389,8 @@ function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, 
 		local delay = tremove(fadeTracker, 1)
 		-- check for flying condition & option HERE
 		local immediateFadeBypass = immediateFadeWhenFlying and IsFlying()
-		if not immediateFadeBypass and delay > dt then
-			tinsert(fadeTracker, delay - dt)
+		if not immediateFadeBypass and delay > elapsedTime then
+			tinsert(fadeTracker, delay - elapsedTime)
 		else
 			local startAlpha = UIParent:GetAlpha()
 
@@ -403,7 +403,7 @@ function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, 
 					fadeDuration,
 					fadeAlpha
 				)
-				self:SetParentOfExcluded(id)
+				self:moveAlwaysVisibleFrameToPermaVizParent(id)
 				fadeFunc(UIParent, fadeDuration, startAlpha, fadeAlpha)
 				UIParent.fadeInfo.finishedFunc = function()
 					self:PrintDebug("%s finished", id)
@@ -438,7 +438,7 @@ function ImmersiveFade:FadeIn()
 			tinsert(fadeInTracker, db.profile.fadeIn.delay)
 		else
 			self:PrintDebug("FadeIn no delay")
-			self:SetParentOfExcluded("FadeIn")
+			self:moveAlwaysVisibleFrameToPermaVizParent("FadeIn")
 			fadeProgress.FadeIn = true
 			UIFrameFadeIn(UIParent, db.profile.fadeIn.duration, startAlpha, db.profile.fadeIn.alpha)
 			UIParent.fadeInfo.finishedFunc = function()
@@ -466,7 +466,7 @@ function ImmersiveFade:FadeOut()
 			tinsert(fadeOutTracker, db.profile.fadeOut.delay)
 		else
 			self:PrintDebug("FadeOut no delay")
-			self:SetParentOfExcluded("FadeOut")
+			self:moveAlwaysVisibleFrameToPermaVizParent("FadeOut")
 			fadeProgress.FadeOut = true
 			UIFrameFadeIn(UIParent, db.profile.fadeOut.duration, startAlpha, db.profile.fadeOut.alpha)
 			UIParent.fadeInfo.finishedFunc = function()
@@ -522,15 +522,15 @@ function ImmersiveFade:OnEnable()
 			-- Don't continue if in combat
 			if UnitAffectingCombat("Player") or InCombatLockdown() then return end
 
-			-- Set exclude parent properties
+			-- Set Perma Viz Root Frame properties
 			-- TODO: This doesn't need to happen every frame
-			ImmersiveFadeExcludeParent:SetFrameStrata(UIParent:GetFrameStrata())
-			ImmersiveFadeExcludeParent:SetWidth(UIParent:GetWidth())
-			ImmersiveFadeExcludeParent:SetHeight(UIParent:GetHeight())
-			ImmersiveFadeExcludeParent:SetPoint("CENTER", 0, 0)
-			ImmersiveFadeExcludeParent:SetScale(UIParent:GetScale())
-			if ImmersiveFadeExcludeParent:IsShown() ~= true then
-				ImmersiveFadeExcludeParent:Show()
+			ImmersiveFadePermaVizRootFrame:SetFrameStrata(UIParent:GetFrameStrata())
+			ImmersiveFadePermaVizRootFrame:SetWidth(UIParent:GetWidth())
+			ImmersiveFadePermaVizRootFrame:SetHeight(UIParent:GetHeight())
+			ImmersiveFadePermaVizRootFrame:SetPoint("CENTER", 0, 0)
+			ImmersiveFadePermaVizRootFrame:SetScale(UIParent:GetScale())
+			if ImmersiveFadePermaVizRootFrame:IsShown() ~= true then
+				ImmersiveFadePermaVizRootFrame:Show()
 			end
 
 			-- In group
@@ -621,9 +621,9 @@ function ImmersiveFade:OnEnable()
 			end
 
 			-- Frame visibility control, default frames
-			for i = 1, #DEFAULT_FRAMES do
-				DefaultFrame = DEFAULT_FRAMES[i]
-				if DefaultFrame ~= nil and DefaultFrame:IsVisible() then
+			for i = 1, #FRAMES_THAT_WILL_FORCE_FADE_IN do
+				conspicuousFrame = FRAMES_THAT_WILL_FORCE_FADE_IN[i]
+				if conspicuousFrame ~= nil and conspicuousFrame:IsVisible() then
 					self:FadeIn()
 					return
 				end
