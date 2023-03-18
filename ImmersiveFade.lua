@@ -93,8 +93,8 @@ local defaults = {
 			immediateFadeWhenFlying = true
 		},
 		frames = {
-			include = "",
-			exclude = "MinimapCluster\nBNToastFrame"
+			include = "ContainerFrame1 \n SpellBookFrame \n FriendsFrame \n WorldMapFrame \n ClassTalentFrame \n EncounterJournal \n CollectionsJournal \n PVEFrame \n CommunitiesFrame \n AchievementFrame \n CharacterFrame",
+			exclude = "MinimapCluster \n BNToastFrame \n ObjectiveTrackerUiWidgetContainer \n SuperTrackedFrame \n UIWidgetPowerBarContainerFrame \n UIErrorsFrame \n TomTomCrazyArrow \n FarmHud"
 		}
 	}
 }
@@ -124,49 +124,52 @@ local options = {
 				return db.profile.debug
 			end
 		},
-		fadeIn = {
+		fadeOut = {
+			order = 10,
 			type = "group",
-			name = "Fade in",
+			name = "Fade out",
 			args = {
 				delay = {
+					order = 10,
 					name = "Delay",
-					desc = "Fade in delay (in seconds)",
+					desc = "How many seconds of inactivity before the UI fades",
 					type = "range",
 					min = 0.0,
 					softMax = 60.0,
 					get = function()
-						return db.profile.fadeIn.delay
+						return db.profile.fadeOut.delay
 					end,
 					set = function(info, val)
-						db.profile.fadeIn.delay = val
+						db.profile.fadeOut.delay = val
 					end
 				},
 				duration = {
+					order = 20,
 					name = "Duration",
-					desc = "Fade in duration (in seconds)",
+					desc = "How long it takes to fade out (in seconds)",
 					type = "range",
 					min = 0.0,
 					softMax = 5.0,
 					get = function()
-						return db.profile.fadeIn.duration
+						return db.profile.fadeOut.duration
 					end,
 					set = function(info, val)
-						db.profile.fadeIn.duration = val
+						db.profile.fadeOut.duration = val
 					end
 				},
 				alpha = {
+					order = 30,
 					name = "Alpha",
-					desc = "Fade in alpha",
+					desc = "Minimum level of visibility after a fade",
 					type = "range",
 					min = 0.0,
 					max = 1.0,
-					softMin = 0.1,
 					isPercent = true,
 					get = function()
-						return db.profile.fadeIn.alpha
+						return db.profile.fadeOut.alpha
 					end,
 					set = function(info, val)
-						db.profile.fadeIn.alpha = val
+						db.profile.fadeOut.alpha = val
 					end
 				},
 				immediateFadeWhenFlying = {
@@ -182,55 +185,78 @@ local options = {
 				}
 			}
 		},
-		fadeOut = {
+		fadeIn = {
+			order = 20,
 			type = "group",
-			name = "Fade out",
+			name = "Fade in",
 			args = {
 				delay = {
+					-- this option is a can cause the UI to stay invisible for too long, so, I'm hiding it from the config screen
+					order = 10,
+					hidden = true,
 					name = "Delay",
-					desc = "Fade out delay (in seconds)",
+					desc = "How long to wait before triggering the fade-in (in seconds)",
 					type = "range",
 					min = 0.0,
-					softMax = 60.0,
+					softMax = 10.0,
 					get = function()
-						return db.profile.fadeOut.delay
+						return db.profile.fadeIn.delay
 					end,
 					set = function(info, val)
-						db.profile.fadeOut.delay = val
+						db.profile.fadeIn.delay = val
 					end
 				},
 				duration = {
+					order = 20,
 					name = "Duration",
-					desc = "Fade out duration (in seconds)",
+					desc = "How long it takes to become fully visible (in seconds)",
 					type = "range",
 					min = 0.0,
 					softMax = 5.0,
 					get = function()
-						return db.profile.fadeOut.duration
+						return db.profile.fadeIn.duration
 					end,
 					set = function(info, val)
-						db.profile.fadeOut.duration = val
+						db.profile.fadeIn.duration = val
 					end
 				},
 				alpha = {
+					order = 30,
 					name = "Alpha",
-					desc = "Fade out alpha",
+					desc = "Maximum level of visibility when fully faded in",
 					type = "range",
 					min = 0.0,
 					max = 1.0,
+					softMin = 0.1,
 					isPercent = true,
 					get = function()
-						return db.profile.fadeOut.alpha
+						return db.profile.fadeIn.alpha
 					end,
 					set = function(info, val)
-						db.profile.fadeOut.alpha = val
+						db.profile.fadeIn.alpha = val
+					end
+				},
+				-- header = { type="header", name = "Show Me", order = 30 },
+				include = {
+					name = "Always fade-in for...",
+					desc = "Enter the names of UI frames (separated with commas or whitespace) for the windows you want to see as soon as you open them (spellbook, bags, etc.).  To learn the names of such UI frames, enter the Blizzard command /framestack",
+					order = 40,
+					width = "full",
+					type = "input",
+					multiline = 10,
+					get = function()
+						return db.profile.frames.include
+					end,
+					set = function(info, val)
+						db.profile.frames.include = val
 					end
 				}
 			}
 		},
 		disable = {
+			order = 40,
 			type = "group",
-			name = "Disable",
+			name = "Disable when...",
 			desc = "Do not fade out when...",
 			args = {
 				party = {
@@ -258,26 +284,18 @@ local options = {
 			}
 		},
 		frames = {
+			order = 25,
 			type = "group",
-			name = "Include/exclude frames",
+			name = "Always Visible",
+			desc = "Show certain elements regardless",
 			args = {
-				include = {
-					name = "Frame whitelist",
-					desc = "If these frames are visible (separated with commas or whitespace), the UI will not fade out",
-					type = "input",
-					multiline = true,
-					get = function()
-						return db.profile.frames.include
-					end,
-					set = function(info, val)
-						db.profile.frames.include = val
-					end
-				},
 				exclude = {
 					name = "Frame blacklist |cffff0000(experimental)|r",
 					desc = "Add names of frames (separated with commas or whitespace) to re-parent to prevent fading out",
+					desc = "Enter the names of UI frames (separated with commas or whitespace) you want to remain visible even when the rest of the UI fades out (dragon riding vigor, objective tracker, TomTom arrow, etc.).  To learn the names of such UI frames, enter the Blizzard command /framestack",
+					width = "full",
 					type = "input",
-					multiline = true,
+					multiline = 10,
 					get = function()
 						return db.profile.frames.exclude
 					end,
