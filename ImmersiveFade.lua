@@ -89,7 +89,8 @@ local defaults = {
 		fadeOut = {
 			delay = 30.0,
 			duration = 2.0,
-			alpha = 0.0
+			alpha = 0.0,
+			immediateFadeWhenFlying = true
 		},
 		frames = {
 			include = "",
@@ -166,6 +167,17 @@ local options = {
 					end,
 					set = function(info, val)
 						db.profile.fadeIn.alpha = val
+					end
+				},
+				immediateFadeWhenFlying = {
+					name = "Flying",
+					desc = "Fade immediately when flying",
+					type = "toggle",
+					set = function(info, val)
+						db.profile.immediateFadeWhenFlying = val
+					end,
+					get = function()
+						return db.profile.immediateFadeWhenFlying
 					end
 				}
 			}
@@ -375,7 +387,9 @@ function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, 
 
 	if #fadeTracker > 0 then
 		local delay = tremove(fadeTracker, 1)
-		if delay > dt then
+		-- check for flying condition & option HERE
+		local immediateFadeBypass = immediateFadeWhenFlying and IsFlying()
+		if not immediateFadeBypass and delay > dt then
 			tinsert(fadeTracker, delay - dt)
 		else
 			local startAlpha = UIParent:GetAlpha()
@@ -491,6 +505,7 @@ function ImmersiveFade:OnEnable()
 				dt,
 				"FadeIn",
 				fadeInTracker,
+				db.profile.fadeOut.immediateFadeWhenFlying,
 				db.profile.fadeIn.duration,
 				db.profile.fadeIn.alpha,
 				UIFrameFadeIn
@@ -499,6 +514,7 @@ function ImmersiveFade:OnEnable()
 				dt,
 				"FadeOut",
 				fadeOutTracker,
+				db.profile.fadeOut.immediateFadeWhenFlying,
 				db.profile.fadeOut.duration,
 				db.profile.fadeOut.alpha,
 				UIFrameFadeOut
