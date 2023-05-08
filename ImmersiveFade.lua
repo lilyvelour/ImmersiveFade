@@ -2,7 +2,7 @@
 
 -- Create addon
 ImmersiveFade = LibStub("AceAddon-3.0"):NewAddon("ImmersiveFade", "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0")
-ImmersiveFadeExcludeParent = CreateFrame("Frame", "ImmersiveFadeExcludeParent")
+ImmersiveFadePermaVizRootFrame = CreateFrame("Frame", "ImmersiveFadePermaVizRootFrame")
 
 local HookFrame = CreateFrame("Frame")
 
@@ -12,7 +12,7 @@ local TIME_EPSILON = 0.01677777
 local CHAT_FRAMES = { ChatFrame1, ChatFrame2, ChatFrame3, ChatFrame4, ChatFrame5, ChatFrame6 }
 local CHAT_FRAME_EDIT_BOXES =
 	{ ChatFrame1EditBox, ChatFrame2EditBox, ChatFrame3EditBox, ChatFrame4EditBox, ChatFrame5EditBox, ChatFrame6EditBox }
-local DEFAULT_FRAMES =
+local FRAMES_THAT_WILL_FORCE_FADE_IN =
 	{
 		AchivementFrame,
 		AchivementAlertFrame1,
@@ -77,6 +77,10 @@ local defaults = {
 	profile = {
 		enabled = true,
 		debug = false,
+		disable = {
+			party = false,
+			raid = true
+		},
 		fadeIn = {
 			delay = 0.0,
 			duration = 0.1,
@@ -85,11 +89,12 @@ local defaults = {
 		fadeOut = {
 			delay = 30.0,
 			duration = 2.0,
-			alpha = 0.0
+			alpha = 0.0,
+			immediateFadeWhenFlying = true
 		},
 		frames = {
-			include = "",
-			exclude = "MinimapCluster\nBNToastFrame"
+			include = "ContainerFrame1 \n SpellBookFrame \n FriendsFrame \n WorldMapFrame \n ClassTalentFrame \n EncounterJournal \n CollectionsJournal \n PVEFrame \n CommunitiesFrame \n AchievementFrame \n CharacterFrame",
+			exclude = "MinimapCluster \n BNToastFrame \n ObjectiveTrackerUiWidgetContainer \n SuperTrackedFrame \n UIWidgetPowerBarContainerFrame \n UIErrorsFrame \n TomTomCrazyArrow \n FarmHud"
 		}
 	}
 }
@@ -119,60 +124,15 @@ local options = {
 				return db.profile.debug
 			end
 		},
-		fadeIn = {
-			type = "group",
-			name = "Fade in",
-			args = {
-				delay = {
-					name = "Delay",
-					desc = "Fade in delay (in seconds)",
-					type = "range",
-					min = 0.0,
-					softMax = 60.0,
-					get = function()
-						return db.profile.fadeIn.delay
-					end,
-					set = function(info, val)
-						db.profile.fadeIn.delay = val
-					end
-				},
-				duration = {
-					name = "Duration",
-					desc = "Fade in duration (in seconds)",
-					type = "range",
-					min = 0.0,
-					softMax = 5.0,
-					get = function()
-						return db.profile.fadeIn.duration
-					end,
-					set = function(info, val)
-						db.profile.fadeIn.duration = val
-					end
-				},
-				alpha = {
-					name = "Alpha",
-					desc = "Fade in alpha",
-					type = "range",
-					min = 0.0,
-					max = 1.0,
-					softMin = 0.1,
-					isPercent = true,
-					get = function()
-						return db.profile.fadeIn.alpha
-					end,
-					set = function(info, val)
-						db.profile.fadeIn.alpha = val
-					end
-				}
-			}
-		},
 		fadeOut = {
+			order = 10,
 			type = "group",
 			name = "Fade out",
 			args = {
 				delay = {
+					order = 10,
 					name = "Delay",
-					desc = "Fade out delay (in seconds)",
+					desc = "How many seconds of inactivity before the UI fades",
 					type = "range",
 					min = 0.0,
 					softMax = 60.0,
@@ -184,8 +144,9 @@ local options = {
 					end
 				},
 				duration = {
+					order = 20,
 					name = "Duration",
-					desc = "Fade out duration (in seconds)",
+					desc = "How long it takes to fade out (in seconds)",
 					type = "range",
 					min = 0.0,
 					softMax = 5.0,
@@ -197,8 +158,9 @@ local options = {
 					end
 				},
 				alpha = {
+					order = 30,
 					name = "Alpha",
-					desc = "Fade out alpha",
+					desc = "Minimum level of visibility after a fade",
 					type = "range",
 					min = 0.0,
 					max = 1.0,
@@ -209,30 +171,131 @@ local options = {
 					set = function(info, val)
 						db.profile.fadeOut.alpha = val
 					end
+				},
+				immediateFadeWhenFlying = {
+					name = "Flying",
+					desc = "Fade immediately when flying",
+					type = "toggle",
+					set = function(info, val)
+						db.profile.immediateFadeWhenFlying = val
+					end,
+					get = function()
+						return db.profile.immediateFadeWhenFlying
+					end
 				}
 			}
 		},
-		frames = {
+		fadeIn = {
+			order = 20,
 			type = "group",
-			name = "Include/exclude frames",
+			name = "Fade in",
 			args = {
+				delay = {
+					-- this option is a can cause the UI to stay invisible for too long, so, I'm hiding it from the config screen
+					order = 10,
+					hidden = true,
+					name = "Delay",
+					desc = "How long to wait before triggering the fade-in (in seconds)",
+					type = "range",
+					min = 0.0,
+					softMax = 10.0,
+					get = function()
+						return db.profile.fadeIn.delay
+					end,
+					set = function(info, val)
+						db.profile.fadeIn.delay = val
+					end
+				},
+				duration = {
+					order = 20,
+					name = "Duration",
+					desc = "How long it takes to become fully visible (in seconds)",
+					type = "range",
+					min = 0.0,
+					softMax = 5.0,
+					get = function()
+						return db.profile.fadeIn.duration
+					end,
+					set = function(info, val)
+						db.profile.fadeIn.duration = val
+					end
+				},
+				alpha = {
+					order = 30,
+					name = "Alpha",
+					desc = "Maximum level of visibility when fully faded in",
+					type = "range",
+					min = 0.0,
+					max = 1.0,
+					softMin = 0.1,
+					isPercent = true,
+					get = function()
+						return db.profile.fadeIn.alpha
+					end,
+					set = function(info, val)
+						db.profile.fadeIn.alpha = val
+					end
+				},
+				-- header = { type="header", name = "Show Me", order = 30 },
 				include = {
-					name = "Frame whitelist",
-					desc = "If these frames are visible (separated with commas or whitespace), the UI will not fade out",
+					name = "Always fade-in for...",
+					desc = "Enter the names of UI frames (separated with commas or whitespace) for the windows you want to see as soon as you open them (spellbook, bags, etc.).  To learn the names of such UI frames, enter the Blizzard command /framestack",
+					order = 40,
+					width = "full",
 					type = "input",
-					multiline = true,
+					multiline = 10,
 					get = function()
 						return db.profile.frames.include
 					end,
 					set = function(info, val)
 						db.profile.frames.include = val
 					end
+				}
+			}
+		},
+		disable = {
+			order = 40,
+			type = "group",
+			name = "Disable when...",
+			desc = "Do not fade out when...",
+			args = {
+				party = {
+					name = "In party",
+					desc = "Disable fade while in a party",
+					type = "toggle",
+					get = function()
+						return db.profile.disable.party
+					end,
+					set = function(info, val)
+						db.profile.disable.party = val
+					end
 				},
+				raid = {
+					name = "In raid",
+					desc = "Disable fade while in a raid",
+					type = "toggle",
+					get = function()
+						return db.profile.disable.raid
+					end,
+					set = function(info, val)
+						db.profile.disable.raid = val
+					end
+				}
+			}
+		},
+		frames = {
+			order = 25,
+			type = "group",
+			name = "Always Visible",
+			desc = "Show certain elements regardless",
+			args = {
 				exclude = {
 					name = "Frame blacklist |cffff0000(experimental)|r",
 					desc = "Add names of frames (separated with commas or whitespace) to re-parent to prevent fading out",
+					desc = "Enter the names of UI frames (separated with commas or whitespace) you want to remain visible even when the rest of the UI fades out (dragon riding vigor, objective tracker, TomTom arrow, etc.).  To learn the names of such UI frames, enter the Blizzard command /framestack",
+					width = "full",
 					type = "input",
-					multiline = true,
+					multiline = 10,
 					get = function()
 						return db.profile.frames.exclude
 					end,
@@ -316,23 +379,23 @@ function ImmersiveFade:SetAlpha(alpha)
 end
 
 -- switch excluded frames' parent when every fading in/out
-function ImmersiveFade:SetParentOfExcluded(action)
-	local excludeFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
-	for i = 1, #excludeFrames do
-		local ExcludeFrame = _G[excludeFrames[i]:gsub("%s+", "")]
-		if ExcludeFrame ~= nil then
-			if (action == "FadeIn" and ExcludeFrame:GetParent() == ImmersiveFadeExcludeParent) then
-				ExcludeFrame:SetParent(UIParent)
-				self:PrintDebug("Payback %s to UIParent", ExcludeFrame:GetName())
-			elseif (action == "FadeOut" and ExcludeFrame:GetParent() ~= ImmersiveFadeExcludeParent) then
-				ExcludeFrame:SetParent(ImmersiveFadeExcludeParent)
-				self:PrintDebug("Exclude %s from Fading", ExcludeFrame:GetName())
+function ImmersiveFade:moveAlwaysVisibleFrameToPermaVizParent(action)
+	local alwaysVisibleFrames = self:SplitStr(db.profile.frames.exclude, "%s", ",")
+	for i = 1, #alwaysVisibleFrames do
+		local keepMeVisable = _G[alwaysVisibleFrames[i]:gsub("%s+", "")]
+		if keepMeVisable ~= nil then
+			if (action == "FadeIn" and keepMeVisable:GetParent() == ImmersiveFadePermaVizRootFrame) then
+				keepMeVisable:SetParent(UIParent)
+				self:PrintDebug("Payback %s to UIParent", keepMeVisable:GetName())
+			elseif (action == "FadeOut" and keepMeVisable:GetParent() ~= ImmersiveFadePermaVizRootFrame) then
+				keepMeVisable:SetParent(ImmersiveFadePermaVizRootFrame)
+				self:PrintDebug("Exclude %s from Fading", keepMeVisable:GetName())
 			end
 		end
 	end
 end
 
-function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, fadeFunc)
+function ImmersiveFade:UpdateFade(elapsedTime, id, fadeTracker, immediateFadeWhenFlying, fadeDuration, fadeAlpha, fadeFunc)
 	-- Don't run in combat
 	if UnitAffectingCombat("Player") or InCombatLockdown() then
 		tremove(fadeTracker, 1)
@@ -342,8 +405,10 @@ function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, 
 
 	if #fadeTracker > 0 then
 		local delay = tremove(fadeTracker, 1)
-		if delay > dt then
-			tinsert(fadeTracker, delay - dt)
+		-- check for flying condition & option HERE
+		local immediateFadeBypass = immediateFadeWhenFlying and IsFlying()
+		if not immediateFadeBypass and delay > elapsedTime then
+			tinsert(fadeTracker, delay - elapsedTime)
 		else
 			local startAlpha = UIParent:GetAlpha()
 
@@ -356,7 +421,7 @@ function ImmersiveFade:UpdateFade(dt, id, fadeTracker, fadeDuration, fadeAlpha, 
 					fadeDuration,
 					fadeAlpha
 				)
-				self:SetParentOfExcluded(id)
+				self:moveAlwaysVisibleFrameToPermaVizParent(id)
 				fadeFunc(UIParent, fadeDuration, startAlpha, fadeAlpha)
 				UIParent.fadeInfo.finishedFunc = function()
 					self:PrintDebug("%s finished", id)
@@ -391,7 +456,7 @@ function ImmersiveFade:FadeIn()
 			tinsert(fadeInTracker, db.profile.fadeIn.delay)
 		else
 			self:PrintDebug("FadeIn no delay")
-			self:SetParentOfExcluded("FadeIn")
+			self:moveAlwaysVisibleFrameToPermaVizParent("FadeIn")
 			fadeProgress.FadeIn = true
 			UIFrameFadeIn(UIParent, db.profile.fadeIn.duration, startAlpha, db.profile.fadeIn.alpha)
 			UIParent.fadeInfo.finishedFunc = function()
@@ -419,7 +484,7 @@ function ImmersiveFade:FadeOut()
 			tinsert(fadeOutTracker, db.profile.fadeOut.delay)
 		else
 			self:PrintDebug("FadeOut no delay")
-			self:SetParentOfExcluded("FadeOut")
+			self:moveAlwaysVisibleFrameToPermaVizParent("FadeOut")
 			fadeProgress.FadeOut = true
 			UIFrameFadeIn(UIParent, db.profile.fadeOut.duration, startAlpha, db.profile.fadeOut.alpha)
 			UIParent.fadeInfo.finishedFunc = function()
@@ -458,6 +523,7 @@ function ImmersiveFade:OnEnable()
 				dt,
 				"FadeIn",
 				fadeInTracker,
+				db.profile.fadeOut.immediateFadeWhenFlying,
 				db.profile.fadeIn.duration,
 				db.profile.fadeIn.alpha,
 				UIFrameFadeIn
@@ -466,6 +532,7 @@ function ImmersiveFade:OnEnable()
 				dt,
 				"FadeOut",
 				fadeOutTracker,
+				db.profile.fadeOut.immediateFadeWhenFlying,
 				db.profile.fadeOut.duration,
 				db.profile.fadeOut.alpha,
 				UIFrameFadeOut
@@ -473,19 +540,25 @@ function ImmersiveFade:OnEnable()
 			-- Don't continue if in combat
 			if UnitAffectingCombat("Player") or InCombatLockdown() then return end
 
-			-- Set exclude parent properties
+			-- Set Perma Viz Root Frame properties
 			-- TODO: This doesn't need to happen every frame
-			ImmersiveFadeExcludeParent:SetFrameStrata(UIParent:GetFrameStrata())
-			ImmersiveFadeExcludeParent:SetWidth(UIParent:GetWidth())
-			ImmersiveFadeExcludeParent:SetHeight(UIParent:GetHeight())
-			ImmersiveFadeExcludeParent:SetPoint("CENTER", 0, 0)
-			ImmersiveFadeExcludeParent:SetScale(UIParent:GetScale())
-			if ImmersiveFadeExcludeParent:IsShown() ~= true then
-				ImmersiveFadeExcludeParent:Show()
+			ImmersiveFadePermaVizRootFrame:SetFrameStrata(UIParent:GetFrameStrata())
+			ImmersiveFadePermaVizRootFrame:SetWidth(UIParent:GetWidth())
+			ImmersiveFadePermaVizRootFrame:SetHeight(UIParent:GetHeight())
+			ImmersiveFadePermaVizRootFrame:SetPoint("CENTER", 0, 0)
+			ImmersiveFadePermaVizRootFrame:SetScale(UIParent:GetScale())
+			if ImmersiveFadePermaVizRootFrame:IsShown() ~= true then
+				ImmersiveFadePermaVizRootFrame:Show()
 			end
 
-			-- In group or raid
-			if IsInGroup() or IsInRaid() then
+			-- In group
+			if db.profile.disable.party and IsInGroup() then
+				self:FadeIn()
+				return
+			end
+
+			-- In raid
+			if db.profile.disable.raid and IsInRaid() then
 				self:FadeIn()
 				return
 			end
@@ -566,9 +639,9 @@ function ImmersiveFade:OnEnable()
 			end
 
 			-- Frame visibility control, default frames
-			for i = 1, #DEFAULT_FRAMES do
-				DefaultFrame = DEFAULT_FRAMES[i]
-				if DefaultFrame ~= nil and DefaultFrame:IsVisible() then
+			for i = 1, #FRAMES_THAT_WILL_FORCE_FADE_IN do
+				conspicuousFrame = FRAMES_THAT_WILL_FORCE_FADE_IN[i]
+				if conspicuousFrame ~= nil and conspicuousFrame:IsVisible() then
 					self:FadeIn()
 					return
 				end
